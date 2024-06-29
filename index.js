@@ -66,11 +66,11 @@ app.command('/approval-test', async ({ ack,body, client }) => {
     };
 
    const message= await client.views.open({ trigger_id: body.trigger_id, view });
-   console.log(message);
+  //  console.log(message);
   } catch (error) {
     console.error(error);
   }
-  
+
 })
 // View submission handler
 app.view('approval_request', async ({ ack, body, view, client }) => {
@@ -111,9 +111,9 @@ app.action('approve', async ({ ack, body, client, respond }) => {
   *Approval Request*
   From: <@${requesterId}>
   Approved by: <@${approverId}>
-  *Status: Approved*
+  Status: :large_green_circle: Approved 
+  *MessageSendByYou: ${body.message?.blocks[0]?.text.text.split('\n')[3]?.split(' ')?.pop()}*
   `;
-
   // Send messages
   await client.chat.postMessage({ channel: requesterId, text: message });
   await respond({ text: 'Approved!' });
@@ -123,25 +123,79 @@ app.action('approve', async ({ ack, body, client, respond }) => {
 
 app.action('reject', async ({ ack, body, client, respond }) => {
   await ack();
+  // Open a modal to collect feedback for rejection with feedback form
+  const view = {
+    type: 'modal',
+    callback_id: 'reject_feedback',
+    private_metadata: body.actions[0].value,
+    title: { type: 'plain_text', text: 'Rejection Feedback' },
+    blocks: [
+      {
+        type: 'input',
+        block_id: 'reject_reason',
+        label: { type: 'plain_text', text: 'Reason for Rejection ' },
+        element: { type: 'plain_text_input', action_id: 'reject_reason_input' }
+      }
+    ],
+    submit: { type: 'plain_text', text: 'Submit'}
+  };
 
-  const approverId = body.user.id;
-  const requesterId = body.actions[0].value; // Get the user ID of the requester who initiated the approval request
-
-  const message = `
-  *Approval Request*
-  From: <@${requesterId}>
-  Rejected by: <@${approverId}>
-  *Status: Rejected*
-  `;
-
-  // Send messages
-  await client.chat.postMessage({ channel: requesterId, text: message });
+  await client.views.open({
+    trigger_id: body.trigger_id,
+    view: view,
+    response_action: "clear"
+  });
   await respond({ text: 'Rejected!' });
 
-  console.log(client.conversations);
+  //With out feedback of rejection ... 
+
+  // const approverId = body.user.id;
+  // const requesterId = body.actions[0].value; // Get the user ID of the requester who initiated the approval request
+  // const message = `
+  // *Approval Request*
+  // From: <@${requesterId}>
+  // Rejected by: <@${approverId}>
+  // Status: :red_circle: Rejected 
+  // *MessageSendByYou: ${body.message?.blocks[0]?.text.text.split('\n')[3]?.split(' ')?.pop()}*
+  // `;
+
+  // // Send messages
+  // await client.chat.postMessage({ channel: requesterId, text: message });
+
+  // await respond({ text: 'Rejected!' });
+
+  // console.log(client.conversations);
+
+  // const approverId = body.user.id;
+  // const requesterId = body.actions[0].value; // Get the user ID of the requester who initiated the approval request
+  // const message = `
+  // *Approval Request*
+  // From: <@${requesterId}>
+  // Rejected by: <@${approverId}>
+  // Status: :red_circle: Rejected 
+  // *MessageSendByYou: ${body.message?.blocks[0]?.text.text.split('\n')[3]?.split(' ')?.pop()}*
+  // `;
+
+  // // Send messages
+  // await client.chat.postMessage({ channel: requesterId, text: message });
+
+  // await respond({ text: 'Rejected!' });
+
+  // console.log(client.conversations);
+});
+// View submission handler for rejection feedback
+app.view('reject_feedback', async ({ ack, body, view, client }) => {
+  await ack();
+
+  const requesterId = view.private_metadata;
+  const rejectReason = view.state.values.reject_reason.reject_reason_input.value; // Get the reason for rejection
+
+  const rejectionMessage = `Your request has been rejected by <@${body.user.id}>. :red_circle: Rejected\n${rejectReason ? `Reason: ${rejectReason}` : ''}`;
+  await client.chat.postMessage({ channel: requesterId, text: rejectionMessage }); // Send a message to the requester
+
 });
 
-
+app.action('')
 const serverStart = async () => {
   // Start the app
   await app.start(process.env.PORT || 3000);
