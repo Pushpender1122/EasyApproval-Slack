@@ -100,6 +100,47 @@ app.view('approval_request', async ({ ack, body, view, client }) => {
   console.log(sentMessage);
 });
 
+// Action handler for Approve/Reject buttons
+app.action('approve', async ({ ack, body, client, respond }) => {
+  await ack();
+
+  const approverId = body.user.id;
+  const requesterId = body.actions[0].value; // Get the user ID of the requester who initiated the approval request
+
+  const message = `
+  *Approval Request*
+  From: <@${requesterId}>
+  Approved by: <@${approverId}>
+  *Status: Approved*
+  `;
+
+  // Send messages
+  await client.chat.postMessage({ channel: requesterId, text: message });
+  await respond({ text: 'Approved!' });
+
+  console.log(client.conversations);
+});
+
+app.action('reject', async ({ ack, body, client, respond }) => {
+  await ack();
+
+  const approverId = body.user.id;
+  const requesterId = body.actions[0].value; // Get the user ID of the requester who initiated the approval request
+
+  const message = `
+  *Approval Request*
+  From: <@${requesterId}>
+  Rejected by: <@${approverId}>
+  *Status: Rejected*
+  `;
+
+  // Send messages
+  await client.chat.postMessage({ channel: requesterId, text: message });
+  await respond({ text: 'Rejected!' });
+
+  console.log(client.conversations);
+});
+
 
 const serverStart = async () => {
   // Start the app
